@@ -1,0 +1,9 @@
+# Secrets
+.env
+
+# Environments
+env/
+__pycache__/
+
+# Database
+*.sqlite3
