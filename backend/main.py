@@ -40,3 +40,37 @@ def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session))
             detail="You haven't registered yet on our platform. First sign up."
         )
     return user
+
+@app.patch("/users/{user_id}")
+def update_user(user_id: uuid.UUID, user_update_data: models.User, session: Session = Depends(get_session)):
+    db_user = session.get(models.User, user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=404, 
+            detail="Cannot update. This user is not registered on our platform."
+        )
+    
+    update_dict = user_update_data.model_dump(exclude_unset=True)
+    
+    for key, value in update_dict.items():
+        if key != "id":
+            setattr(db_user, key, value)
+            
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    db_user = session.get(models.User, user_id)
+    if not db_user:
+        raise HTTPException(
+            status_code=404, 
+            detail="Cannot delete. This user does not exist on our platform."
+        )
+        
+    session.delete(db_user)
+    session.commit()
+    
+    return {"status": "success", "message": f"User account {user_id} has been permanently deleted."}
