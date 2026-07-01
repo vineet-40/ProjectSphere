@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from sqlmodel import Session, select
-from database import init_db, get_session
-from security import get_password_hash
+from database import init_db, get_session, engine
+from security import get_password_hash, verify_password, create_access_token
 import models
 import uuid
 
@@ -76,3 +76,24 @@ def delete_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
     session.commit()
     
     return {"status": "success", "message": f"User account {user_id} has been permanently deleted."}
+
+@app.post("/login/")
+def login(login_data: models.UserLogin, session: Session = Depends(get_session)):
+
+    statement = select(models.User).where(models.User.email == login_data.email)
+    db_user = session.exec(statement).first()
+    
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid email or password"
+        )
+        
+    if not verify_password(login_data.password, db_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid email or password"
+        )
+
+    access_token = create_access_token(data={"sub": db_user.email})    
+    return {"access_token": access_token, "token_type": "bearer"}
