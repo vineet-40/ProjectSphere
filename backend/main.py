@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select
 from database import init_db, get_session
+from security import get_password_hash
 import models
 import uuid
 
@@ -20,6 +21,7 @@ def read_root():
 
 @app.post("/users/")
 def create_user(user: models.User, session: Session = Depends(get_session)):
+    user.password_hash = get_password_hash(user.password_hash)
     session.add(user)
     session.commit()
     session.refresh(user)
