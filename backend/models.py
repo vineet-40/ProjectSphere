@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 import uuid
 
 class User(SQLModel, table=True):
@@ -20,6 +20,12 @@ class Project(SQLModel, table=True):
     live_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     creator_id: uuid.UUID = Field(foreign_key="user.id")
+
+class ProjectCreate(SQLModel):
+    title: str
+    description: str
+    github_url: Optional[HttpUrl] = None
+    live_url: Optional[HttpUrl] = None
 
 class UserLogin(BaseModel):
     email: str

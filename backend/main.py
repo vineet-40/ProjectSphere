@@ -134,3 +134,41 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
 @app.get("/users/me/")
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+
+@app.post("/projects/", response_model=models.Project)
+def create_project(
+    project_data: models.ProjectCreate, 
+    current_user: models.User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    
+    db_project = models.Project(
+        **project_data.model_dump(mode="json"), 
+        creator_id=current_user.id
+    )
+    session.add(db_project)
+    session.commit()
+    session.refresh(db_project)
+    return db_project
+
+
+@app.get("/projects/", response_model=list[models.Project])
+def read_projects(
+    offset: int = 0, 
+    limit: int = 10, 
+    session: Session = Depends(get_session)
+):
+
+    statement = select(models.Project).offset(offset).limit(limit)
+    projects = session.exec(statement).all()
+    return projects
+
+
+@app.get("/projects/{project_id}", response_model=models.Project)
+def read_project(project_id: uuid.UUID, session: Session = Depends(get_session)):
+    db_project = session.get(models.Project, project_id)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return db_project
