@@ -2,6 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlmodel import Session, select
 from database import init_db, get_session, engine
 from security import get_password_hash, verify_password, create_access_token
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from security import get_password_hash, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+import jwt
 import models
 import uuid
 
@@ -10,6 +13,8 @@ app = FastAPI(
     description="The heavy-duty backend engine for showcasing student innovations.",
     version="1.0.0"
 )
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 @app.on_event("startup")
 def on_startup():
@@ -78,9 +83,9 @@ def delete_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
     return {"status": "success", "message": f"User account {user_id} has been permanently deleted."}
 
 @app.post("/login/")
-def login(login_data: models.UserLogin, session: Session = Depends(get_session)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
 
-    statement = select(models.User).where(models.User.email == login_data.email)
+    statement = select(models.User).where(models.User.email == form_data.username)
     db_user = session.exec(statement).first()
     
     if not db_user:
@@ -89,7 +94,7 @@ def login(login_data: models.UserLogin, session: Session = Depends(get_session))
             detail="Invalid email or password"
         )
         
-    if not verify_password(login_data.password, db_user.password_hash):
+    if not verify_password(form_data.password, db_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Invalid email or password"
@@ -97,3 +102,35 @@ def login(login_data: models.UserLogin, session: Session = Depends(get_session))
 
     access_token = create_access_token(data={"sub": db_user.email})    
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+            
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    statement = select(models.User).where(models.User.email == email)
+    user = session.exec(statement).first()
+    
+    if user is None:
+        raise credentials_exception
+        
+    return user
+
+
+@app.get("/users/me/")
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
