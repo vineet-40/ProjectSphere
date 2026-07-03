@@ -12,6 +12,12 @@ class User(SQLModel, table=True):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
 
+class UserUpdate(SQLModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+
 class Project(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     title: str = Field(index=True)
@@ -26,6 +32,12 @@ class ProjectCreate(SQLModel):
     description: str
     github_url: Optional[HttpUrl] = None
     live_url: Optional[HttpUrl] = None
+
+class ProjectUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    github_url: Optional[str] = None
+    live_url: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str

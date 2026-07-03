@@ -48,13 +48,55 @@ def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session))
         )
     return user
 
-@app.patch("/users/{user_id}")
-def update_user(user_id: uuid.UUID, user_update_data: models.User, session: Session = Depends(get_session)):
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+            
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    statement = select(models.User).where(models.User.email == email)
+    user = session.exec(statement).first()
+    
+    if user is None:
+        raise credentials_exception
+        
+    return user
+
+
+
+@app.patch("/users/{user_id}", response_model=models.User)
+def update_user(
+    user_id: uuid.UUID, 
+    user_update_data: models.UserUpdate,
+    current_user: models.User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Forbidden: You can only modify your own account."
+        )
+    
     db_user = session.get(models.User, user_id)
     if not db_user:
         raise HTTPException(
             status_code=404, 
-            detail="Cannot update. This user is not registered on our platform."
+            detail="User not found."
         )
     
     update_dict = user_update_data.model_dump(exclude_unset=True)
@@ -68,13 +110,25 @@ def update_user(user_id: uuid.UUID, user_update_data: models.User, session: Sess
     session.refresh(db_user)
     return db_user
 
+
 @app.delete("/users/{user_id}")
-def delete_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def delete_user(
+    user_id: uuid.UUID, 
+    current_user: models.User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Forbidden: You cannot delete another user's account."
+        )
+    
     db_user = session.get(models.User, user_id)
     if not db_user:
         raise HTTPException(
             status_code=404, 
-            detail="Cannot delete. This user does not exist on our platform."
+            detail="User not found."
         )
         
     session.delete(db_user)
@@ -104,31 +158,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = D
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-            
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.InvalidTokenError:
-        raise credentials_exception
 
-    statement = select(models.User).where(models.User.email == email)
-    user = session.exec(statement).first()
-    
-    if user is None:
-        raise credentials_exception
-        
-    return user
 
 
 @app.get("/users/me/")
@@ -172,3 +202,48 @@ def read_project(project_id: uuid.UUID, session: Session = Depends(get_session))
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
     return db_project
+
+
+@app.patch("/projects/{project_id}", response_model=models.Project)
+def update_project(
+    project_id: uuid.UUID,
+    project_data: models.ProjectUpdate, 
+    current_user: models.UserUpdate = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+
+    db_project = session.get(models.Project, project_id)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    if db_project.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this project")
+        
+    update_data = project_data.model_dump(exclude_unset=True, mode="json")
+    for key, value in update_data.items():
+        setattr(db_project, key, value)
+        
+    session.add(db_project)
+    session.commit()
+    session.refresh(db_project)
+    return db_project
+
+
+@app.delete("/projects/{project_id}")
+def delete_project(
+    project_id: uuid.UUID,
+    current_user: models.User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    
+    db_project = session.get(models.Project, project_id)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    if db_project.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this project")
+        
+    session.delete(db_project)
+    session.commit()
+    
+    return {"message": "Project deleted successfully"}
