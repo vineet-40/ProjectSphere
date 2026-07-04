@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from sqlmodel import Session, select
 from database import init_db, get_session, engine
 from security import get_password_hash, verify_password, create_access_token
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from security import get_password_hash, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional
 import jwt
 import models
 import uuid
@@ -200,14 +201,18 @@ def create_project(
     return db_project
 
 
-@app.get("/projects/", response_model=list[models.Project])
+@app.get("/projects/", response_model=List[models.ProjectPublic])
 def read_projects(
+    session: Session = Depends(get_session),
     offset: int = 0, 
-    limit: int = 10, 
-    session: Session = Depends(get_session)
+    limit: int = Query(default=100, le=100),
+    search: Optional[str] = None
 ):
+    statement = select(models.Project)
+    if search:
+        statement = statement.where(models.Project.title.contains(search))
 
-    statement = select(models.Project).offset(offset).limit(limit)
+    statement = statement.offset(offset).limit(limit)
     projects = session.exec(statement).all()
     return projects
 
