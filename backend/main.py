@@ -4,6 +4,7 @@ from database import init_db, get_session, engine
 from security import get_password_hash, verify_password, create_access_token
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from security import get_password_hash, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+from fastapi.middleware.cors import CORSMiddleware
 import jwt
 import models
 import uuid
@@ -12,6 +13,21 @@ app = FastAPI(
     title="ProjectSphere API",
     description="The heavy-duty backend engine for showcasing student innovations.",
     version="1.0.0"
+)
+
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -38,7 +54,7 @@ def get_all_users(session: Session = Depends(get_session)):
     results = session.exec(statement).all()
     return results
 
-@app.get("/users/{user_id}")
+@app.get("/users/{user_id}", response_model=models.UserPublicWithProjects)
 def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
     user = session.get(models.User, user_id)
     if not user:

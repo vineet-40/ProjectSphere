@@ -1,5 +1,5 @@
-from typing import Optional
-from sqlmodel import Field, SQLModel
+from typing import Optional, List
+from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
 from pydantic import BaseModel, HttpUrl
 import uuid
@@ -11,6 +11,8 @@ class User(SQLModel, table=True):
     password_hash: str
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
+
+    projects: List["Project"] = Relationship(back_populates="creator")
 
 class UserUpdate(SQLModel):
     name: Optional[str] = None
@@ -25,7 +27,9 @@ class Project(SQLModel, table=True):
     github_url: Optional[str] = None
     live_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
     creator_id: uuid.UUID = Field(foreign_key="user.id")
+    creator: Optional["User"] = Relationship(back_populates="projects")
 
 class ProjectCreate(SQLModel):
     title: str
@@ -46,3 +50,21 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class ProjectPublic(SQLModel):
+    id: uuid.UUID
+    title: str
+    description: str
+    github_url: Optional[str] = None
+    live_url: Optional[str] = None
+
+class UserPublic(SQLModel):
+    id: uuid.UUID
+    name: str
+    email: str
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+class UserPublicWithProjects(UserPublic):
+    projects: List[ProjectPublic] = []
