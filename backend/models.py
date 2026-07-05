@@ -45,8 +45,8 @@ class ProjectCreate(SQLModel):
 class ProjectUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    github_url: Optional[str] = None
-    live_url: Optional[str] = None
+    github_url: Optional[HttpUrl] = None
+    live_url: Optional[HttpUrl] = None
 
 class UserLogin(BaseModel):
     email: str
@@ -61,8 +61,8 @@ class ProjectPublic(SQLModel):
     id: uuid.UUID
     title: str
     description: str
-    github_url: Optional[str] = None
-    live_url: Optional[str] = None
+    github_url: Optional[HttpUrl] = None
+    live_url: Optional[HttpUrl] = None
 
 class UserPublic(SQLModel):
     id: uuid.UUID

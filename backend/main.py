@@ -1,19 +1,26 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query
-from sqlmodel import Session, select, col
+from sqlmodel import Session, select, col, desc
 from database import init_db, get_session, engine
 from security import get_password_hash, verify_password, create_access_token
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from security import get_password_hash, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
+from contextlib import asynccontextmanager
 import jwt
 import models
 import uuid
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 app = FastAPI(
     title="ProjectSphere API",
     description="The heavy-duty backend engine for showcasing student innovations.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 origins = [
@@ -32,10 +39,6 @@ app.add_middleware(
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
 
 @app.get("/")
 def read_root():
@@ -67,7 +70,7 @@ def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session))
     if not user:
         raise HTTPException(
             status_code=404, 
-            detail="You haven't registered yet on our platform. First sign up."
+            detail="User not found"
         )
     return user
 
@@ -218,6 +221,7 @@ def read_projects(
     if search:
         statement = statement.where(col(models.Project.title).ilike(f"%{search}%"))
 
+    statement = statement.order_by(desc(models.Project.created_at))
     statement = statement.offset(offset).limit(limit)
     projects = session.exec(statement).all()
     return projects
@@ -235,7 +239,7 @@ def read_project(project_id: uuid.UUID, session: Session = Depends(get_session))
 def update_project(
     project_id: uuid.UUID,
     project_data: models.ProjectUpdate, 
-    current_user: models.UserUpdate = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
 
