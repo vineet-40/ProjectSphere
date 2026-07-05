@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 from database import init_db, get_session, engine
 from security import get_password_hash, verify_password, create_access_token
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -41,15 +41,21 @@ def on_startup():
 def read_root():
     return {"status": "ProjectSphere Backend Engine is Online"}
 
-@app.post("/users/")
-def create_user(user: models.User, session: Session = Depends(get_session)):
-    user.password_hash = get_password_hash(user.password_hash)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
+@app.post("/users/", response_model=models.UserPublic)
+def create_user(user_data: models.UserCreate, session: Session = Depends(get_session)):
+    hashed_pw = get_password_hash(user_data.password)
+    db_user = models.User(
+        name=user_data.name,
+        email=user_data.email,
+        password_hash=hashed_pw
+    )
 
-@app.get("/users/")
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
+
+@app.get("/users/", response_model=List[models.UserPublic])
 def get_all_users(session: Session = Depends(get_session)):
     statement = select(models.User)
     results = session.exec(statement).all()
@@ -210,7 +216,7 @@ def read_projects(
 ):
     statement = select(models.Project)
     if search:
-        statement = statement.where(models.Project.title.contains(search))
+        statement = statement.where(col(models.Project.title).ilike(f"%{search}%"))
 
     statement = statement.offset(offset).limit(limit)
     projects = session.exec(statement).all()

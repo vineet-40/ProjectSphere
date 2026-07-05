@@ -1,6 +1,6 @@
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, HttpUrl
 import uuid
 
@@ -14,6 +14,11 @@ class User(SQLModel, table=True):
 
     projects: List["Project"] = Relationship(back_populates="creator")
 
+class UserCreate(SQLModel):
+    name: str
+    email: str
+    password: str
+
 class UserUpdate(SQLModel):
     name: Optional[str] = None
     email: Optional[str] = None
@@ -26,7 +31,7 @@ class Project(SQLModel, table=True):
     description: str
     github_url: Optional[str] = None
     live_url: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     creator_id: uuid.UUID = Field(foreign_key="user.id")
     creator: Optional["User"] = Relationship(back_populates="projects")
