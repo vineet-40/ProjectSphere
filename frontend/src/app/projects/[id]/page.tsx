@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackButton from "../../../components/BackButton";
 
 async function getProject(id: string) {
   const res = await fetch(`http://127.0.0.1:8000/projects/${id}`, {
@@ -33,9 +34,7 @@ return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       
       <div className="mb-8">
-        <Link href="/projects" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-          &larr; Back to all projects
-        </Link>
+        <BackButton />
       </div>
 
       <div className="border-b border-gray-200 pb-8">
