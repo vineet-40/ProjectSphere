@@ -90,7 +90,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
         
     return user
 
-@app.get("/users/me")
+@app.get("/users/me", response_model=models.UserPublicWithProjects)
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
@@ -218,7 +218,7 @@ def read_projects(
     return projects
 
 
-@app.get("/projects/{project_id}", response_model=models.Project)
+@app.get("/projects/{project_id}", response_model=models.ProjectPublic)
 def read_project(project_id: uuid.UUID, session: Session = Depends(get_session)):
     db_project = session.get(models.Project, project_id)
     if not db_project:
@@ -226,7 +226,7 @@ def read_project(project_id: uuid.UUID, session: Session = Depends(get_session))
     return db_project
 
 
-@app.patch("/projects/{project_id}", response_model=models.Project)
+@app.patch("/projects/{project_id}", response_model=models.ProjectPublic)
 def update_project(
     project_id: uuid.UUID,
     project_data: models.ProjectUpdate, 
