@@ -91,6 +91,40 @@ export default function ProfilePage() {
     );
   }
 
+
+  const handleDelete = async (projectId: string) => {
+    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/projects/${projectId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete project");
+      }
+
+      setUser((prevUser) => {
+        if (!prevUser) return null;
+        return {
+          ...prevUser,
+          projects: prevUser.projects.filter((p) => p.id !== projectId)
+        };
+      });
+
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       
@@ -154,6 +188,13 @@ export default function ProfilePage() {
                    <Link href={`/projects/${project.id}`} className="text-sm font-medium text-blue-600 hover:underline">
                      View details
                    </Link>
+
+                   <button 
+                     onClick={() => handleDelete(project.id)}
+                     className="text-sm font-medium text-red-600 hover:text-red-500 hover:underline"
+                   >
+                     Delete
+                   </button>
                 </div>
               </div>
             ))}
