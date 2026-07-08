@@ -184,10 +184,16 @@ export default function ProfilePage() {
                   <h3 className="text-lg font-bold text-gray-900">{project.title}</h3>
                   <p className="mt-2 text-sm text-gray-500 line-clamp-3">{project.description}</p>
                 </div>
-                <div className="mt-4 flex gap-3">
-                   <Link href={`/projects/${project.id}`} className="text-sm font-medium text-blue-600 hover:underline">
-                     View details
-                   </Link>
+                <div className="mt-4 flex items-center justify-between">
+                    <div className="flex gap-4">
+                        <Link href={`/projects/${project.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                        View details
+                        </Link>
+
+                        <Link href={`/projects/${project.id}/edit`} className="text-sm font-medium text-green-600 hover:text-green-500 hover:underline">
+                        Edit
+                        </Link>
+                        </div>
 
                    <button 
                      onClick={() => handleDelete(project.id)}
