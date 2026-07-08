@@ -64,18 +64,6 @@ def get_all_users(session: Session = Depends(get_session)):
     results = session.exec(statement).all()
     return results
 
-@app.get("/users/{user_id}", response_model=models.UserPublicWithProjects)
-def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
-    user = session.get(models.User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=404, 
-            detail="User not found"
-        )
-    return user
-
-
-
 def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,7 +90,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
         
     return user
 
+@app.get("/users/me")
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
 
+@app.get("/users/{user_id}", response_model=models.UserPublicWithProjects)
+def get_single_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    user = session.get(models.User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=404, 
+            detail="User not found"
+        )
+    return user
 
 @app.patch("/users/{user_id}", response_model=models.User)
 def update_user(
@@ -162,7 +162,7 @@ def delete_user(
     
     return {"status": "success", "message": f"User account {user_id} has been permanently deleted."}
 
-@app.post("/login/")
+@app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
 
     statement = select(models.User).where(models.User.email == form_data.username)
@@ -182,15 +182,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = D
 
     access_token = create_access_token(data={"sub": db_user.email})    
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-
-
-
-@app.get("/users/me/")
-def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
-
 
 
 @app.post("/projects/", response_model=models.Project)
