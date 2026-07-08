@@ -4,12 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  github_url?: string;
+  live_url?: string;
+}
+
 interface UserProfile {
   id: string;
   name: string;
   email: string;
   bio?: string;
   avatar_url?: string;
+  projects: Project[];
 }
 
 export default function ProfilePage() {
@@ -122,7 +131,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="mt-12">
+    <div className="mt-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">My Projects</h2>
           <Link
@@ -133,9 +142,27 @@ export default function ProfilePage() {
           </Link>
         </div>
         
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-          <p className="text-sm text-gray-500">You haven't uploaded any projects yet.</p>
-        </div>
+        {user?.projects && user.projects.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {user.projects.map((project) => (
+              <div key={project.id} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{project.title}</h3>
+                  <p className="mt-2 text-sm text-gray-500 line-clamp-3">{project.description}</p>
+                </div>
+                <div className="mt-4 flex gap-3">
+                   <Link href={`/projects/${project.id}`} className="text-sm font-medium text-blue-600 hover:underline">
+                     View details
+                   </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+            <p className="text-sm text-gray-500">You haven't uploaded any projects yet.</p>
+          </div>
+        )}
       </div>
 
     </main>
